@@ -72,7 +72,7 @@ Respondé SOLO con JSON válido, sin markdown ni explicaciones.`
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5-20250514",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
         messages: [
           {
