@@ -7,6 +7,7 @@ import { EMPRESA } from "@/lib/workflow-types"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger
@@ -119,6 +120,9 @@ export function WorkflowTopbar({
               <DialogTitle className="flex items-center gap-2">
                 {"🏢"} {EMPRESA.nombre}
               </DialogTitle>
+              <DialogDescription>
+                Datos de la empresa disponibles para generar workflows
+              </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-3 gap-4 mt-4">
               <div>
