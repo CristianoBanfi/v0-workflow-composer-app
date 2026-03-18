@@ -15,6 +15,7 @@ export default function WorkflowComposer() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [hasApiKey] = useState(!!process.env.NEXT_PUBLIC_HAS_ANTHROPIC_KEY)
+  const [generationError, setGenerationError] = useState<string | null>(null)
 
   const handleSelectTemplate = useCallback((templateWorkflow: Workflow) => {
     setWorkflow(templateWorkflow)
@@ -34,6 +35,7 @@ export default function WorkflowComposer() {
     }
     setMessages(prev => [...prev, userMsg])
     setIsGenerating(true)
+    setGenerationError(null)
 
     try {
       const response = await fetch("/api/generate", {
@@ -48,6 +50,12 @@ export default function WorkflowComposer() {
       const data = await response.json()
 
       if (data.error) {
+        // Check if it's a parsing/validation error or connection error
+        if (data.error.includes("parsear") || data.error.includes("inválida")) {
+          setGenerationError("No se pudo generar el workflow. Intentá con una descripción más detallada.")
+        } else {
+          setGenerationError("Error de conexión. Revisá tu API key e intentá de nuevo.")
+        }
         const errorMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
@@ -67,7 +75,8 @@ export default function WorkflowComposer() {
         }
         setMessages(prev => [...prev, successMsg])
       }
-    } catch (error) {
+    } catch {
+      setGenerationError("Error de conexión. Revisá tu API key e intentá de nuevo.")
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -78,6 +87,10 @@ export default function WorkflowComposer() {
       setIsGenerating(false)
     }
   }, [workflow])
+
+  const handleClearError = useCallback(() => {
+    setGenerationError(null)
+  }, [])
 
   const handlePublish = useCallback(() => {
     setIsDraft(false)
@@ -105,8 +118,13 @@ export default function WorkflowComposer() {
           messages={messages}
           isGenerating={isGenerating}
           hasApiKey={hasApiKey}
+          generationError={generationError}
+          onClearError={handleClearError}
         />
-        <WorkflowCanvas workflow={workflow} />
+        <WorkflowCanvas 
+          workflow={workflow} 
+          onWorkflowUpdate={setWorkflow}
+        />
       </div>
     </div>
   )

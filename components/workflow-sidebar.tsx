@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import type { Workflow, Template, ChatMessage } from "@/lib/workflow-types"
+import { useState, useEffect } from "react"
+import type { Workflow, ChatMessage } from "@/lib/workflow-types"
 import { TEMPLATES, EMPRESA } from "@/lib/workflow-types"
+import { ChevronRight, ChevronDown, AlertTriangle, Loader2 } from "lucide-react"
 
 interface WorkflowSidebarProps {
   onSelectTemplate: (workflow: Workflow) => void
@@ -11,6 +12,8 @@ interface WorkflowSidebarProps {
   messages: ChatMessage[]
   isGenerating: boolean
   hasApiKey: boolean
+  generationError: string | null
+  onClearError: () => void
 }
 
 export function WorkflowSidebar({
@@ -19,9 +22,29 @@ export function WorkflowSidebar({
   selectedTemplateId,
   messages,
   isGenerating,
-  hasApiKey
+  hasApiKey,
+  generationError,
+  onClearError
 }: WorkflowSidebarProps) {
   const [inputText, setInputText] = useState("")
+  const [templatesExpanded, setTemplatesExpanded] = useState(false)
+
+  // Clear error when user starts typing
+  useEffect(() => {
+    if (inputText && generationError) {
+      onClearError()
+    }
+  }, [inputText, generationError, onClearError])
+
+  // Auto-hide error after 5 seconds
+  useEffect(() => {
+    if (generationError) {
+      const timer = setTimeout(() => {
+        onClearError()
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [generationError, onClearError])
 
   const handleSubmit = async () => {
     if (!inputText.trim() || isGenerating) return
@@ -49,36 +72,94 @@ export function WorkflowSidebar({
         </p>
       </div>
 
-      {/* Templates */}
+      {/* Input area - MOVED TO TOP */}
       <div className="p-4 border-b border-border">
-        <p className="text-[10px] uppercase text-muted-foreground font-medium mb-2 tracking-wide">
-          TEMPLATES
-        </p>
-        <div className="flex flex-col gap-2">
-          {TEMPLATES.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => onSelectTemplate(template.workflow)}
-              className={`w-full text-left p-3 rounded-lg transition-colors ${
-                selectedTemplateId === template.id
-                  ? "bg-muted border-2 border-primary"
-                  : "bg-muted border-2 border-transparent hover:border-border"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-base">{template.emoji}</span>
-                <div>
-                  <p className="text-[12px] font-medium text-foreground">
-                    {template.title}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {template.description}
-                  </p>
+        <textarea
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Describí el proceso... Ej: solicitud de vacaciones con aprobación del jefe. Si aprueba → cerrada. Si rechaza → cancelada."
+          rows={4}
+          className="w-full p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg text-[12px] resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          disabled={isGenerating}
+        />
+        <button
+          onClick={handleSubmit}
+          disabled={!inputText.trim() || isGenerating}
+          className={`w-full mt-2 py-2 px-4 rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2 ${
+            inputText.trim() && !isGenerating
+              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+          }`}
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              Generando...
+            </>
+          ) : (
+            <>{"⚡"} Generar workflow</>
+          )}
+        </button>
+        
+        {/* Error message */}
+        {generationError && (
+          <div className="mt-2 flex items-start gap-1.5 text-red-500">
+            <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
+            <p className="text-xs">{generationError}</p>
+          </div>
+        )}
+        
+        {!hasApiKey && !generationError && (
+          <p className="text-[10px] text-[#F59E0B] text-center mt-2">
+            {"💡"} Necesitás la API key para generación real
+          </p>
+        )}
+      </div>
+
+      {/* Templates - COLLAPSIBLE */}
+      <div className="border-b border-border">
+        <button
+          onClick={() => setTemplatesExpanded(!templatesExpanded)}
+          className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
+        >
+          <p className="text-[10px] uppercase text-muted-foreground font-medium tracking-wide">
+            TEMPLATES
+          </p>
+          {templatesExpanded ? (
+            <ChevronDown size={14} className="text-muted-foreground" />
+          ) : (
+            <ChevronRight size={14} className="text-muted-foreground" />
+          )}
+        </button>
+        
+        {templatesExpanded && (
+          <div className="px-4 pb-4 flex flex-col gap-2">
+            {TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => onSelectTemplate(template.workflow)}
+                className={`w-full text-left p-3 rounded-lg transition-colors ${
+                  selectedTemplateId === template.id
+                    ? "bg-muted border-2 border-primary"
+                    : "bg-muted border-2 border-transparent hover:border-border"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{template.emoji}</span>
+                  <div>
+                    <p className="text-[12px] font-medium text-foreground">
+                      {template.title}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {template.description}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
-        </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Company snapshot */}
@@ -129,34 +210,6 @@ export function WorkflowSidebar({
             ))
           )}
         </div>
-      </div>
-
-      {/* Input area */}
-      <div className="p-4 border-t border-border">
-        <textarea
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={`Describí el flujo...\n\nEj: Para home office, aprobación del jefe directo. Si aprueba → En proceso. Si rechaza → Cancelada.`}
-          className="w-full h-24 p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg text-[12px] resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-          disabled={isGenerating}
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={!inputText.trim() || isGenerating}
-          className={`w-full mt-2 py-2 px-4 rounded-lg text-[13px] font-medium transition-colors ${
-            inputText.trim() && !isGenerating
-              ? "bg-primary text-primary-foreground hover:bg-primary/90"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
-          }`}
-        >
-          {isGenerating ? "⏳ Generando..." : "⚡ Generar workflow"}
-        </button>
-        {!hasApiKey && (
-          <p className="text-[10px] text-[#F59E0B] text-center mt-2">
-            {"💡"} Necesitás la API key para generación real
-          </p>
-        )}
       </div>
     </div>
   )
