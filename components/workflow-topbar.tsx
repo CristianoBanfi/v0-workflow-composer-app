@@ -115,12 +115,12 @@ export function WorkflowTopbar({
               {"📋"} Ver datos empresa
             </button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl" aria-describedby="empresa-dialog-description">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {"🏢"} {EMPRESA.nombre}
+                {EMPRESA.nombre}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription id="empresa-dialog-description">
                 Datos de la empresa disponibles para generar workflows
               </DialogDescription>
             </DialogHeader>

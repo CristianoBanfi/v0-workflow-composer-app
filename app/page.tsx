@@ -26,12 +26,14 @@ export default function WorkflowComposer() {
     setMessages([])
   }, [])
 
-  const handleGenerate = useCallback(async (text: string) => {
+  const handleGenerate = useCallback(async (text: string, clarifications?: Record<string, string>) => {
     // Add user message
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: "user",
-      content: text
+      content: clarifications 
+        ? `${text} (con aclaraciones: ${Object.values(clarifications).join(", ")})`
+        : text
     }
     setMessages(prev => [...prev, userMsg])
     setIsGenerating(true)
@@ -43,7 +45,8 @@ export default function WorkflowComposer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userText: text,
-          currentWorkflow: workflow
+          currentWorkflow: workflow,
+          clarifications
         })
       })
 

@@ -5,7 +5,7 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 
 export async function POST(request: Request) {
   try {
-    const { userText, currentWorkflow } = await request.json()
+    const { userText, currentWorkflow, clarifications } = await request.json()
 
     if (!ANTHROPIC_API_KEY) {
       return NextResponse.json(
@@ -14,7 +14,12 @@ export async function POST(request: Request) {
       )
     }
 
-    const systemPrompt = `Sos un asistente que genera workflows de automatización para una plataforma de RRHH llamada Humand.
+    // Build clarifications section if provided
+    const clarificationsSection = clarifications 
+      ? `\n\nEl usuario tambien aclaro:\n${Object.entries(clarifications as Record<string, string>).map(([q, a]) => `- ${q}: ${a}`).join("\n")}`
+      : ""
+
+    const systemPrompt = `Sos un asistente que genera workflows de automatizacion para una plataforma de RRHH llamada Humand.
 
 DATOS DE LA EMPRESA:
 - Nombre: ${EMPRESA.nombre}
@@ -57,11 +62,12 @@ REGLAS:
 6. Los status válidos son: "En proceso", "En espera", "Cerrada", "Cancelada"
 7. branch puede ser "approved", "rejected" o una condición del branch node
 8. Para approval nodes, siempre incluí los dos outcomes: approved (Cerrada) y rejected (Cancelada)
-${currentWorkflow ? "\n9. IMPORTANTE: Modificá el workflow existente sin eliminar pasos existentes, solo agregá o modificá según lo pedido." : ""}
+${currentWorkflow ? "\n9. IMPORTANTE: Modifica el workflow existente sin eliminar pasos existentes, solo agrega o modifica segun lo pedido." : ""}
 
 ${currentWorkflow ? `WORKFLOW ACTUAL:\n${JSON.stringify(currentWorkflow, null, 2)}` : ""}
+${clarificationsSection}
 
-Respondé SOLO con el JSON del Workflow.`
+Responde SOLO con el JSON del Workflow.`
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
