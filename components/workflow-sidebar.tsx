@@ -146,7 +146,7 @@ export function WorkflowSidebar({
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Describi el proceso... Ej: solicitud de vacaciones con aprobacion del jefe. Si aprueba, cerrada. Si rechaza, cancelada."
-          rows={4}
+          rows={6}
           className="w-full p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg text-[12px] resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           disabled={isDisabled}
         />
@@ -268,25 +268,26 @@ export function WorkflowSidebar({
         </div>
       </div>
 
-      {/* Chat history */}
-      <div className="flex-1 overflow-auto p-4">
-        <p className="text-[10px] uppercase text-muted-foreground font-medium mb-2 tracking-wide">
+      {/* Chat history - compact */}
+      <div className="p-4 overflow-hidden">
+        <p className="text-xs text-gray-400 mb-2 tracking-wide">
           HISTORIAL
         </p>
-        <div className="space-y-2">
+        <div className="space-y-1 max-h-24 overflow-y-auto">
           {messages.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground italic">
+            <p className="text-xs text-muted-foreground italic">
               Usa un template o describi el flujo...
             </p>
           ) : (
             messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`p-2 rounded-lg text-[11px] ${
+                className={`p-1.5 rounded text-xs truncate ${
                   msg.role === "user"
                     ? "bg-muted text-foreground"
                     : "bg-transparent text-primary"
                 }`}
+                title={msg.content}
               >
                 {msg.content}
               </div>

@@ -168,19 +168,19 @@ function RenderStep({ step, tree, isLast, onNodeClick, highlightedNodeId, simula
     switch (step.type) {
       case "approval":
         return (
-          <div onClick={handleClick} className={`cursor-pointer transition-all duration-300 rounded-xl ${nodeClasses}`}>
+          <div data-node onClick={handleClick} className={`cursor-pointer transition-all duration-300 rounded-xl ${nodeClasses}`}>
             <ApprovalNode step={step} />
           </div>
         )
       case "update":
         return (
-          <div onClick={handleClick} className={`cursor-pointer transition-all duration-300 rounded-xl ${nodeClasses}`}>
+          <div data-node onClick={handleClick} className={`cursor-pointer transition-all duration-300 rounded-xl ${nodeClasses}`}>
             <UpdateNode step={step} />
           </div>
         )
       case "branch":
         return (
-          <div onClick={handleClick} className={`cursor-pointer transition-all duration-300 rounded-xl ${nodeClasses}`}>
+          <div data-node onClick={handleClick} className={`cursor-pointer transition-all duration-300 rounded-xl ${nodeClasses}`}>
             <BranchNode step={step} />
           </div>
         )
@@ -321,6 +321,12 @@ function RenderStep({ step, tree, isLast, onNodeClick, highlightedNodeId, simula
 export function WorkflowCanvas({ workflow, onWorkflowUpdate }: WorkflowCanvasProps) {
   const [zoom, setZoom] = useState(100)
   
+  // Pan state
+  const [isPanning, setIsPanning] = useState(false)
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+  const canvasRef = useRef<HTMLDivElement>(null)
+  
   // Edit popover state
   const [editingStep, setEditingStep] = useState<Step | null>(null)
   const [popoverPosition, setPopoverPosition] = useState({ x: 0, y: 0 })
@@ -337,7 +343,34 @@ export function WorkflowCanvas({ workflow, onWorkflowUpdate }: WorkflowCanvasPro
 
   const handleZoomIn = () => setZoom(Math.min(zoom + 10, 150))
   const handleZoomOut = () => setZoom(Math.max(zoom - 10, 50))
-  const handleReset = () => setZoom(100)
+  const handleReset = () => {
+    setZoom(100)
+    setPanOffset({ x: 0, y: 0 })
+  }
+
+  // Pan handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only pan if clicking on canvas background, not on nodes
+    if ((e.target as HTMLElement).closest('[data-node]')) return
+    setIsPanning(true)
+    setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y })
+  }, [panOffset])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isPanning) return
+    setPanOffset({
+      x: e.clientX - panStart.x,
+      y: e.clientY - panStart.y
+    })
+  }, [isPanning, panStart])
+
+  const handleMouseUp = useCallback(() => {
+    setIsPanning(false)
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    setIsPanning(false)
+  }, [])
 
   // Clear simulation when workflow changes
   useEffect(() => {
@@ -515,16 +548,24 @@ export function WorkflowCanvas({ workflow, onWorkflowUpdate }: WorkflowCanvasPro
 
   return (
     <div 
-      className="flex-1 overflow-auto relative"
+      ref={canvasRef}
+      className={`flex-1 overflow-hidden relative ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
       style={{
         background: "radial-gradient(circle, #D4D4D8 1px, transparent 1px)",
         backgroundSize: "24px 24px",
         backgroundColor: "#F4F4F5"
       }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
     >
       <div 
         className="flex flex-col items-center py-8 min-h-full"
-        style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
+        style={{ 
+          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom / 100})`, 
+          transformOrigin: "top center" 
+        }}
       >
         <div className={`transition-all duration-300 ${simulationState === "running" && !currentNodeId ? "ring-2 ring-violet-500 bg-violet-50 rounded-xl" : ""}`}>
           <TriggerNode trigger={workflow.trigger} />
