@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, FileJson } from "lucide-react"
 import type { Workflow } from "@/lib/workflow-types"
 import type { CommunityData } from "@/app/api/community/route"
@@ -20,6 +20,7 @@ interface WorkflowTopbarProps {
   onPublish: () => void
   workflow: Workflow | null
   communityData: CommunityData | null
+  onBack?: () => void
 }
 
 export function WorkflowTopbar({
@@ -28,11 +29,17 @@ export function WorkflowTopbar({
   isDraft,
   onPublish,
   workflow,
-  communityData
+  communityData,
+  onBack
 }: WorkflowTopbarProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(workflowName)
   const [showDataModal, setShowDataModal] = useState(false)
+
+  // Sync editValue when workflowName prop changes
+  useEffect(() => {
+    setEditValue(workflowName)
+  }, [workflowName])
 
   const handleSave = () => {
     onNameChange(editValue)
@@ -66,6 +73,7 @@ export function WorkflowTopbar({
     <header className="h-[52px] bg-card border-b border-border flex items-center px-4 gap-4">
       {/* Back button */}
       <button 
+        onClick={onBack}
         className="p-1 hover:bg-muted rounded transition-colors"
         aria-label="Volver"
       >
