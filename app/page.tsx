@@ -5,6 +5,7 @@ import { WorkflowTopbar } from "@/components/workflow-topbar"
 import { WorkflowSidebar } from "@/components/workflow-sidebar"
 import { WorkflowCanvas } from "@/components/workflow-canvas"
 import { DEFAULT_WORKFLOW, TEMPLATES, type Workflow, type ChatMessage } from "@/lib/workflow-types"
+import type { CommunityData } from "@/app/api/community/route"
 import { Toaster, toast } from "sonner"
 
 export default function WorkflowComposer() {
@@ -16,6 +17,11 @@ export default function WorkflowComposer() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [hasApiKey] = useState(!!process.env.NEXT_PUBLIC_HAS_ANTHROPIC_KEY)
   const [generationError, setGenerationError] = useState<string | null>(null)
+  
+  // Community data state
+  const [communityData, setCommunityData] = useState<CommunityData | null>(null)
+  const [communityError, setCommunityError] = useState<string | null>(null)
+  const [isLoadingCommunity, setIsLoadingCommunity] = useState(false)
 
   const handleSelectTemplate = useCallback((templateWorkflow: Workflow) => {
     setWorkflow(templateWorkflow)
@@ -112,6 +118,7 @@ export default function WorkflowComposer() {
         isDraft={isDraft}
         onPublish={handlePublish}
         workflow={workflow}
+        communityData={communityData}
       />
       <div className="flex flex-1 overflow-hidden">
         <WorkflowSidebar
@@ -123,6 +130,12 @@ export default function WorkflowComposer() {
           hasApiKey={hasApiKey}
           generationError={generationError}
           onClearError={handleClearError}
+          communityData={communityData}
+          onCommunityChange={setCommunityData}
+          communityError={communityError}
+          onCommunityError={setCommunityError}
+          isLoadingCommunity={isLoadingCommunity}
+          onLoadingCommunity={setIsLoadingCommunity}
         />
         <WorkflowCanvas 
           workflow={workflow} 

@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import type { Workflow, ChatMessage } from "@/lib/workflow-types"
-import { TEMPLATES, EMPRESA } from "@/lib/workflow-types"
+import { TEMPLATES } from "@/lib/workflow-types"
 import { ChevronRight, ChevronDown, AlertTriangle, Loader2 } from "lucide-react"
 import { ClarificationQuestions, type ClarificationQuestion } from "./clarification-questions"
+import type { CommunityData } from "@/app/api/community/route"
 
 type GenerationPhase = "idle" | "interpreting" | "clarifying" | "generating"
 
@@ -17,6 +18,12 @@ interface WorkflowSidebarProps {
   hasApiKey: boolean
   generationError: string | null
   onClearError: () => void
+  communityData: CommunityData | null
+  onCommunityChange: (data: CommunityData | null) => void
+  communityError: string | null
+  onCommunityError: (error: string | null) => void
+  isLoadingCommunity: boolean
+  onLoadingCommunity: (loading: boolean) => void
 }
 
 export function WorkflowSidebar({
@@ -27,13 +34,82 @@ export function WorkflowSidebar({
   isGenerating,
   hasApiKey,
   generationError,
-  onClearError
+  onClearError,
+  communityData,
+  onCommunityChange,
+  communityError,
+  onCommunityError,
+  isLoadingCommunity,
+  onLoadingCommunity
 }: WorkflowSidebarProps) {
   const [inputText, setInputText] = useState("")
   const [templatesExpanded, setTemplatesExpanded] = useState(false)
+  const [historialExpanded, setHistorialExpanded] = useState(false)
   const [phase, setPhase] = useState<GenerationPhase>("idle")
   const [clarificationQuestions, setClarificationQuestions] = useState<ClarificationQuestion[]>([])
   const [originalDescription, setOriginalDescription] = useState("")
+  const [instanceId, setInstanceId] = useState("")
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Fetch community data with debounce
+  const fetchCommunityData = useCallback(async (id: string) => {
+    if (!id.trim()) {
+      onCommunityChange(null)
+      onCommunityError(null)
+      return
+    }
+
+    onLoadingCommunity(true)
+    onCommunityError(null)
+
+    try {
+      const response = await fetch(`/api/community?instanceId=${encodeURIComponent(id.trim())}`)
+      const data = await response.json()
+
+      if (data.error) {
+        onCommunityError(data.error)
+        onCommunityChange(null)
+      } else if (data.community) {
+        onCommunityChange(data.community)
+        onCommunityError(null)
+      }
+    } catch {
+      onCommunityError("Error de conexion")
+      onCommunityChange(null)
+    } finally {
+      onLoadingCommunity(false)
+    }
+  }, [onCommunityChange, onCommunityError, onLoadingCommunity])
+
+  // Handle instance ID change with debounce
+  const handleInstanceIdChange = useCallback((value: string) => {
+    // Only allow numbers
+    const numericValue = value.replace(/\D/g, "")
+    setInstanceId(numericValue)
+
+    // Clear previous timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+
+    // Debounce API call
+    debounceRef.current = setTimeout(() => {
+      fetchCommunityData(numericValue)
+    }, 600)
+  }, [fetchCommunityData])
+
+  // Handle blur - fetch immediately
+  const handleInstanceIdBlur = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+    fetchCommunityData(instanceId)
+  }, [instanceId, fetchCommunityData])
+
+  // Fill textarea with history item
+  const handleHistoryClick = useCallback((content: string) => {
+    setInputText(content)
+  }, [])
 
   // Clear error when user starts typing
   useEffect(() => {
@@ -146,7 +222,7 @@ export function WorkflowSidebar({
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Describi el proceso... Ej: solicitud de vacaciones con aprobacion del jefe. Si aprueba, cerrada. Si rechaza, cancelada."
-          rows={6}
+          rows={8}
           className="w-full p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg text-[12px] resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           disabled={isDisabled}
         />
@@ -245,55 +321,100 @@ export function WorkflowSidebar({
         )}
       </div>
 
-      {/* Company snapshot */}
+      {/* Instance ID Input */}
       <div className="p-4 border-b border-border">
-        <div className="bg-muted rounded-lg p-3">
-          <p className="text-[12px] font-bold text-foreground">
-            {EMPRESA.nombre}
-          </p>
-          <div className="mt-2 space-y-1">
-            <p className="text-[10px] text-muted-foreground">
-              {EMPRESA.servicios.length} servicios
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              {EMPRESA.departamentos.length} departamentos
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              {EMPRESA.usuarios.length} aprobadores
-            </p>
-          </div>
-          <p className="text-[9px] text-primary mt-3">
-            Claude conoce estos datos al generar
-          </p>
-        </div>
-      </div>
-
-      {/* Chat history - compact */}
-      <div className="p-4 overflow-hidden">
-        <p className="text-xs text-gray-400 mb-2 tracking-wide">
-          HISTORIAL
-        </p>
-        <div className="space-y-1 max-h-24 overflow-y-auto">
-          {messages.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">
-              Usa un template o describi el flujo...
-            </p>
-          ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`p-1.5 rounded text-xs truncate ${
-                  msg.role === "user"
-                    ? "bg-muted text-foreground"
-                    : "bg-transparent text-primary"
-                }`}
-                title={msg.content}
-              >
-                {msg.content}
-              </div>
-            ))
+        <label className="text-xs font-medium text-gray-400 tracking-wider uppercase block mb-2">
+          COMUNIDAD
+        </label>
+        <div className="relative">
+          <input
+            type="text"
+            inputMode="numeric"
+            value={instanceId}
+            onChange={(e) => handleInstanceIdChange(e.target.value)}
+            onBlur={handleInstanceIdBlur}
+            placeholder="Instance ID (ej: 5924)"
+            className={`w-full border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 pr-10 ${
+              communityError ? "border-red-300" : "border-gray-200"
+            }`}
+          />
+          {isLoadingCommunity && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 size={16} className="animate-spin text-violet-400" />
+            </div>
           )}
         </div>
+
+        {/* Error state */}
+        {communityError && (
+          <p className="text-xs text-red-400 mt-1.5 flex items-center gap-1">
+            <span>⚠</span> {communityError}
+          </p>
+        )}
+
+        {/* Success state - Community data card */}
+        {communityData && !communityError && (
+          <div className="mt-3">
+            <p className="font-semibold text-sm text-gray-800">
+              {communityData.nombre}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <span className="bg-gray-50 border border-gray-100 rounded-full text-xs text-gray-500 px-2 py-0.5">
+                🏢 {communityData.departamentos.length} departamentos
+              </span>
+              <span className="bg-gray-50 border border-gray-100 rounded-full text-xs text-gray-500 px-2 py-0.5">
+                👤 {communityData.usuarios.length} usuarios
+              </span>
+              <span className="bg-gray-50 border border-gray-100 rounded-full text-xs text-gray-500 px-2 py-0.5">
+                ⚙️ {communityData.servicios.length} servicios
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="text-xs text-green-500">Conectado</span>
+            </div>
+            <p className="text-[9px] text-primary mt-2">
+              Claude conoce estos datos al generar
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Historial - collapsible */}
+      <div className="border-t border-border">
+        <button
+          onClick={() => setHistorialExpanded(!historialExpanded)}
+          className="w-full px-4 py-2 flex items-center justify-between hover:bg-muted/30 transition-colors"
+        >
+          <span className="text-xs text-gray-300 tracking-wide">HISTORIAL</span>
+          {historialExpanded ? (
+            <ChevronDown size={12} className="text-gray-300" />
+          ) : (
+            <ChevronRight size={12} className="text-gray-300" />
+          )}
+        </button>
+        
+        {historialExpanded && (
+          <div className="px-4 pb-3 space-y-1">
+            {messages.filter(m => m.role === "user").slice(-3).length === 0 ? (
+              <p className="text-xs text-gray-400 italic">Sin historial</p>
+            ) : (
+              messages
+                .filter(m => m.role === "user")
+                .slice(-3)
+                .map((msg) => (
+                  <button
+                    key={msg.id}
+                    onClick={() => handleHistoryClick(msg.content)}
+                    className="w-full text-left text-xs text-gray-400 truncate hover:text-gray-600 transition-colors py-0.5"
+                    title={msg.content}
+                  >
+                    {msg.content}
+                  </button>
+                ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

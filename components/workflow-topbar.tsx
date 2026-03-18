@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, ChevronDown, FileJson, X } from "lucide-react"
+import { ArrowLeft, FileJson } from "lucide-react"
 import type { Workflow } from "@/lib/workflow-types"
-import { EMPRESA } from "@/lib/workflow-types"
+import type { CommunityData } from "@/app/api/community/route"
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ interface WorkflowTopbarProps {
   isDraft: boolean
   onPublish: () => void
   workflow: Workflow | null
+  communityData: CommunityData | null
 }
 
 export function WorkflowTopbar({
@@ -26,7 +27,8 @@ export function WorkflowTopbar({
   onNameChange,
   isDraft,
   onPublish,
-  workflow
+  workflow,
+  communityData
 }: WorkflowTopbarProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(workflowName)
@@ -109,55 +111,60 @@ export function WorkflowTopbar({
       {/* Right side buttons */}
       <div className="flex items-center gap-2">
         {/* View company data */}
-        <Dialog open={showDataModal} onOpenChange={setShowDataModal}>
-          <DialogTrigger asChild>
-            <button className="flex items-center gap-1 px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-muted rounded-lg transition-colors">
-              {"📋"} Ver datos empresa
-            </button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl" aria-describedby="empresa-dialog-description">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {EMPRESA.nombre}
-              </DialogTitle>
-              <DialogDescription id="empresa-dialog-description">
-                Datos de la empresa disponibles para generar workflows
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <div>
-                <h3 className="text-[12px] font-bold text-foreground mb-2">Servicios</h3>
-                <div className="space-y-1 max-h-60 overflow-auto">
-                  {EMPRESA.servicios.map((s) => (
-                    <p key={s} className="text-[11px] text-muted-foreground">{s}</p>
-                  ))}
+        {communityData ? (
+          <Dialog open={showDataModal} onOpenChange={setShowDataModal}>
+            <DialogTrigger asChild>
+              <button className="flex items-center gap-1 px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-muted rounded-lg transition-colors">
+                Ver datos empresa
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl rounded-2xl shadow-lg" aria-describedby="empresa-dialog-description">
+              <DialogHeader>
+                <DialogTitle className="font-semibold text-lg">
+                  {communityData.nombre}
+                </DialogTitle>
+                <DialogDescription id="empresa-dialog-description">
+                  Datos de la comunidad disponibles para generar workflows
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-3 gap-4 mt-4">
+                <div>
+                  <h3 className="text-[12px] font-bold text-foreground mb-2">Departamentos</h3>
+                  <div className="space-y-1 max-h-60 overflow-auto">
+                    {communityData.departamentos.map((d) => (
+                      <p key={d} className="text-[11px] text-muted-foreground">{d}</p>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-[12px] font-bold text-foreground mb-2">Aprobadores</h3>
+                  <div className="space-y-1 max-h-60 overflow-auto">
+                    {communityData.usuarios.map((u, i) => (
+                      <p key={i} className="text-[11px] text-muted-foreground">
+                        {u.nombre} <span className="text-gray-400">({u.rol})</span>
+                      </p>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-[12px] font-bold text-foreground mb-2">Servicios</h3>
+                  <div className="space-y-1 max-h-60 overflow-auto">
+                    {communityData.servicios.map((s) => (
+                      <p key={s} className="text-[11px] text-muted-foreground">{s}</p>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div>
-                <h3 className="text-[12px] font-bold text-foreground mb-2">Departamentos</h3>
-                <div className="space-y-1">
-                  {EMPRESA.departamentos.map((d) => (
-                    <p key={d} className="text-[11px] text-muted-foreground">{d}</p>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h3 className="text-[12px] font-bold text-foreground mb-2">Aprobadores + Roles</h3>
-                <div className="space-y-1 mb-4">
-                  {EMPRESA.usuarios.map((u) => (
-                    <p key={u} className="text-[11px] text-muted-foreground">{u}</p>
-                  ))}
-                </div>
-                <h4 className="text-[11px] font-medium text-foreground mb-1">Roles:</h4>
-                <div className="space-y-1">
-                  {EMPRESA.roles.map((r) => (
-                    <p key={r} className="text-[11px] text-muted-foreground">{r}</p>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <button 
+            disabled
+            className="flex items-center gap-1 px-3 py-1.5 text-[12px] text-gray-300 cursor-not-allowed rounded-lg"
+          >
+            Ver datos empresa
+          </button>
+        )}
 
         {/* Export JSON */}
         <button 
